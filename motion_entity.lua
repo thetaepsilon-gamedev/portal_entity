@@ -72,6 +72,7 @@ local attach_player = function(self, player)
 	local o = self.object
 	local current = o:get_properties()
 	current.weight = pprops.weight
+	current.collisionbox = pprops.collisionbox
 	o:set_properties(current)
 	o:set_acceleration(gravity)
 
@@ -139,5 +140,23 @@ local def = {
 	on_step = on_step,
 	on_activate = on_activate,
 }
-minetest.register_entity("portal_entity:motion", def)
+local name = "portal_entity:motion"
+minetest.register_entity(name, def)
+
+
+
+-- now for some helper functions
+local i = {}
+local fling_player = function(player, vel)
+	-- position doesn't matter as it will shortly be moved
+	local ent = minetest.add_entity(zero, name, "new")
+	local self = ent:get_luaentity()
+	ent:set_velocity(vel)
+	self:set_player(player)
+	return ent
+end
+i.fling_player = fling_player
+
+return i
+
 

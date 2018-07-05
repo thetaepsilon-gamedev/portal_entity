@@ -6,7 +6,8 @@ Currently doesnt do anything to manipulate velocity.
 ]]
 -- register some requisites first
 local mp = minetest.get_modpath("portal_entity") .. "/"
-dofile(mp.."motion_entity.lua")
+local i = {}
+i.motion = dofile(mp.."motion_entity.lua")
 
 --[[
 The way teleportation is achieved goes like the following:
@@ -161,4 +162,7 @@ minetest.register_entity(n, {
 	textures = { "portal_entity_sprite.png" },
 	on_step = on_step,
 })
+
+-- export helpers interface
+portal_entity = i
 
