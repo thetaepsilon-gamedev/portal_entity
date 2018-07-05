@@ -20,24 +20,34 @@ When the player's speed has returned to within normal range
 the entity detaches the player and removes itself.
 ]]
 
+local ndebug = function() end
+local ydebug = print
+local debug = ndebug
+local kill = function(msg)
+	debug(msg)
+	return true
+end
+local ok = function()
+	debug("ok")
+end
 local check_self_kill = function(self)
-	if not self.setup then return true end
+	if not self.setup then return kill("not initialised") end
 	-- we can't retrieve child objects in attached bones.
 	-- therefore we have to keep track of it some other way:
 	-- when we're spawned, we expect to have a player object present in our lua entity.
 	-- if this is missing or invalid, die so as to not cause problems.
 	local player = self.player
-	if player == nil then return true end
-	if not player:is_player() then return true end
+	if player == nil then return kill("nil player ref") end
+	if not player:is_player() then return kill("not a player") end
 
 	-- has this player ref vanished (e.g. the player disconnected)?
 	local pos = player:get_pos()
-	if pos == nil then return true end
+	if pos == nil then return kill("not in the world") end
 	-- player attached to something else (say they clicked on a boat)?
 	local parent = player:get_attach()
-	if parent ~= self.object then return true end
+	if parent ~= self.object then return kill("wrong parent") end
 	-- player dead? (otherwise they could be stuck there on respawn)
-	if player:get_hp() <= 0 then return true end
+	if player:get_hp() <= 0 then return kill("player is dead") end
 
 	-- check our current velocity.
 	-- if it happens to be lower than the player's normal walking threshold,
@@ -45,13 +55,15 @@ local check_self_kill = function(self)
 	local vel = self.object:get_velocity()
 	local speed = vector.length(vel)
 	-- TODO: what if this changes in future
-	if speed < 4 then return true end
+	if speed < 4 then return kill("walking pace") end
 
 	-- assuming we passed all that, we can continue.
-	return false
+	return ok()
 end
 
 local zero = vector.new(0,0,0)
+-- is there a better way to do this...
+local gravity = vector.new(0, -9.8, 0)
 local attach_player = function(self, player)
 	self.player = player
 
@@ -61,12 +73,14 @@ local attach_player = function(self, player)
 	local current = o:get_properties()
 	current.weight = pprops.weight
 	o:set_properties(current)
+	o:set_acceleration(gravity)
 
 	-- move to correct location and attach
 	self.object:set_pos(player:get_pos())
 	player:set_attach(o, "player", zero, zero)
 
 	self.setup = true
+	debug("player attached")
 end
 
 -- use this method on get_luaentity() to set up this entity.
@@ -87,6 +101,7 @@ local set_player = function(self, player)
 	-- check that the player is currently moving fast enough etc.
 	local kill = check_self_kill(self)
 	if kill then
+		debug("premature death")
 		self.object:remove()
 		return
 	end
@@ -97,12 +112,16 @@ end
 local on_step = function(self, dtime)
 	-- check the player is still appropriate, else remove ourselves
 	local kill = check_self_kill(self)
-	if kill then self.object:remove() end
+	if kill then
+		debug("object no longer suitable")
+		self.object:remove()
+	end
 end
 
 local on_activate = function(self, staticdata, dtime_s)
 	-- this entity is not intended to be persistent across loads.
 	if staticdata ~= "new" then
+		debug("tried to re-create from save")
 		self.object:remove()
 		return
 	end
@@ -113,6 +132,8 @@ end
 
 -- TODO: make invisible when debugged?
 local def = {
+	physical = true,
+	collide_with_objects = true,
 	visual = "sprite",
 	textures = { "portal_entity_motion_debug.png" },
 	on_step = on_step,
