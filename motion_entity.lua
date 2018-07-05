@@ -22,7 +22,7 @@ the entity detaches the player and removes itself.
 
 local ndebug = function() end
 local ydebug = print
-local debug = ndebug
+local debug = ydebug
 local kill = function(msg)
 	debug(msg)
 	return true
@@ -30,6 +30,7 @@ end
 local ok = function()
 	debug("ok")
 end
+local vec3 = vector.new
 local check_self_kill = function(self)
 	if not self.setup then return kill("not initialised") end
 	-- we can't retrieve child objects in attached bones.
@@ -51,15 +52,48 @@ local check_self_kill = function(self)
 
 	-- check our current velocity.
 	-- if it happens to be lower than the player's normal walking threshold,
-	-- let them move normally again
+	-- let them move normally again *if they're on a solid surface*.
 	local vel = self.object:get_velocity()
 	local speed = vector.length(vel)
 	-- TODO: what if this changes in future
-	if speed < 4 then return kill("walking pace") end
+	local pos = self.object:get_pos()
+	if speed < 4 then
+		local feet = vec3(pos.x, pos.y-0.05, pos.z)
+		local node = minetest.get_node(feet)
+		-- in the event of anything failing, keep the entity attached.
+		if node then
+			local n = node.name
+			debug("name: ", n)
+			local def = minetest.registered_nodes[n]
+			-- we don't treat ignore as a blocking condition.
+			-- this way we're not detached if the world can't keep up
+			if def then
+				if def.walkable then
+					return kill("stood on solid node")
+				end
+			end
+		end
+	end
 
 	-- assuming we passed all that, we can continue.
 	return ok()
 end
+
+
+
+-- when attached to a player, we take on their cbox.
+-- however, the default one as returned by the player properties has some -Y padding.
+-- to fix this, alter the cbox such that it's dimensions are the same,
+-- but it's Y values are shifted up such that it's bottom side is zero.
+-- WARNING: mutates argument in place!
+local adjust_cbox_mut = function(cbox)
+	local bottom = cbox[2]
+	local top = cbox[5]
+	cbox[2] = 0
+	cbox[5] = top - bottom
+end
+
+
 
 local zero = vector.new(0,0,0)
 -- is there a better way to do this...
@@ -73,6 +107,7 @@ local attach_player = function(self, player)
 	local current = o:get_properties()
 	current.weight = pprops.weight
 	current.collisionbox = pprops.collisionbox
+	adjust_cbox_mut(current.collisionbox)
 	o:set_properties(current)
 	o:set_acceleration(gravity)
 
