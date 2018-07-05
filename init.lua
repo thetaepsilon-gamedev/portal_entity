@@ -4,6 +4,9 @@ objects close enough to it are teleported through it,
 appearing at a given point with an offset opposite of the offset upon stepping in.
 Currently doesnt do anything to manipulate velocity.
 ]]
+-- register some requisites first
+local mp = minetest.get_modpath("portal_entity") .. "/"
+dofile(mp.."motion_entity.lua")
 
 --[[
 The way teleportation is achieved goes like the following:
