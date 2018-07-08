@@ -20,6 +20,21 @@ When the player's speed has returned to within normal range
 the entity detaches the player and removes itself.
 ]]
 
+-- applying friction to the entity on solid surfaces
+local m_friction_calc = mtrequire("ds2.minetest.drag_physics.mt_default_friction_calc")
+local friction_sampler = m_friction_calc.friction_sampler
+m_apply = mtrequire("ds2.minetest.drag_physics.apply_surface_friction")
+local apply_surface_friction = m_apply.apply
+local apply = function(dtime, selfent)
+	return apply_surface_friction(
+		dtime,
+		selfent,
+		selfent:get_properties(),
+		friction_sampler)
+end
+
+
+
 local ndebug = function() end
 local ydebug = print
 local debug = ydebug
@@ -146,6 +161,8 @@ local set_player = function(self, player)
 end
 
 local on_step = function(self, dtime)
+	-- surface drag calculations
+	apply(dtime, self.object)
 	-- check the player is still appropriate, else remove ourselves
 	local kill = check_self_kill(self)
 	if kill then
