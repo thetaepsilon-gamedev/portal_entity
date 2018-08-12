@@ -153,9 +153,12 @@ local set_player = function(self, player)
 	local kill = check_self_kill(self)
 	if kill then
 		debug("premature death")
-		self.object:remove()
+		self:cleanup()
 		return
 	end
+
+	-- save the player ref for easy access later.
+	self.playerref = player
 
 	-- otherwise we should be good
 end
@@ -167,20 +170,31 @@ local on_step = function(self, dtime)
 	local kill = check_self_kill(self)
 	if kill then
 		debug("object no longer suitable")
-		self.object:remove()
+		self:cleanup()
 	end
+end
+
+-- clean-up routine which detaches the player properly before removing the object.
+-- hopefully to counter some weird invisibility bugs for players
+local cleanup = function(self)
+	local p = self.playerref
+	if p and self.object:get_bone_position("player") then
+		p:set_detach()
+	end
+	self.object:remove()
 end
 
 local on_activate = function(self, staticdata, dtime_s)
 	-- this entity is not intended to be persistent across loads.
 	if staticdata ~= "new" then
 		debug("tried to re-create from save")
-		self.object:remove()
+		cleanup(self)
 		return
 	end
 	-- otherwise, created fresh.
 	-- provide injector method
 	self.set_player = set_player
+	self.cleanup = cleanup
 end
 
 -- TODO: make invisible when debugged?
