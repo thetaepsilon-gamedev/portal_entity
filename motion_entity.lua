@@ -209,6 +209,36 @@ local fling_player = function(player, vel)
 end
 i.fling_player = fling_player
 
+-- to fling a player that might already be in flight,
+-- we need to find their root attachment object and move that instead;
+-- if that's a regular entity, then we just offset that entity's velocity.
+-- returns the actual entity that was altered;
+-- this may be a newly created motion entity.
+local fling_entity = function(ent, addvel)
+	-- seek for the root of the attachment hierachy
+	local current = ent
+	local iterate = function()
+		local parent, bone, pos = current:get_attach()
+		if parent then current = parent end
+		return parent
+	end
+	for _ in iterate do end
+	-- we will end up with the root entity.
+	local vel
+	local isp = current:is_player()
+	vel = isp and current:get_player_velocity() or current:get_velocity()
+	local tvel = vector.add(vel, addvel)
+	if isp then
+		return fling_player(current, tvel)
+	else
+		current:set_velocity(tvel)
+		return current
+	end
+end
+i.fling_entity = fling_entity
+
+
+
 return i
 
 
