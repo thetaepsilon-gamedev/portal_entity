@@ -184,6 +184,14 @@ local cleanup = function(self)
 	self.object:remove()
 end
 
+
+
+-- entity is invulnerable and not punchable by the player.
+-- this is so they can't escape from being flung by punching it.
+local groups = {
+	immortal = 1,
+	punch_operable = 1,
+}
 local on_activate = function(self, staticdata, dtime_s)
 	-- this entity is not intended to be persistent across loads.
 	if staticdata ~= "new" then
@@ -191,6 +199,7 @@ local on_activate = function(self, staticdata, dtime_s)
 		cleanup(self)
 		return
 	end
+	self.object:set_armor_groups(groups)
 	-- otherwise, created fresh.
 	-- provide injector method
 	self.set_player = set_player
@@ -198,6 +207,7 @@ local on_activate = function(self, staticdata, dtime_s)
 end
 
 -- TODO: make invisible when debugged?
+
 local def = {
 	physical = true,
 	collide_with_objects = true,
@@ -205,6 +215,7 @@ local def = {
 	textures = { "portal_entity_motion_debug.png" },
 	on_step = on_step,
 	on_activate = on_activate,
+	armor_groups = groups,
 }
 local name = "portal_entity:motion"
 minetest.register_entity(name, def)
