@@ -211,6 +211,8 @@ end
 local def = {
 	physical = true,
 	collide_with_objects = true,
+	pointable = false,
+	selectionbox = {0,0,0,0,0,0},
 	visual = "sprite",
 	textures = { "portal_entity_motion_debug.png" },
 	on_step = on_step,
