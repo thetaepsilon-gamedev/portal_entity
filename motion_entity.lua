@@ -266,6 +266,25 @@ minetest.register_craftitem(n, {
 	end
 })
 
+-- a debug item which lets admins detach themselves or other objects from any parent.
+-- mainly useful if the attachment entity bugs out and won't let go of a player.
+local n = "portal_entity:ungrabber"
+local releaseme = function(item, user, pointed)
+	user:set_detach()
+end
+minetest.register_craftitem(n, {
+	description = "The Ungrabber" ..
+		" (left click to detach object, right click to detach self)",
+	inventory_image = "portal_entity_motion_debug_ungrabber.png",
+	on_use = function(item, user, pointed)
+		if pointed.type ~= "object" then return nil end
+		pointed.ref:set_detach()
+	end,
+	on_place = releaseme,
+	on_secondary_use = releaseme,
+	groups = { not_in_creative_inventory = 1 },
+})
+
 
 
 return i
