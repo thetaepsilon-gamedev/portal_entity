@@ -254,16 +254,26 @@ i.fling_entity = fling_entity
 -- an example item using this routine.
 local n = "portal_entity:thors_hammer"
 local hammer_power = 50
+local hammer_throw = function(user, ent)
+	local lookdir = user:get_look_dir()
+	local vel = vector.multiply(lookdir, hammer_power)
+	return fling_entity(ent, vel)
+end
+local throwme = function(item, user, pointed)
+	-- NB: do NOT return something weird from on_* callbacks for items...
+	-- that way lies segfaults and sadness
+	hammer_throw(user, user)
+end
 minetest.register_craftitem(n, {
 	description = "Debug fling hammer (try punching an object/player)",
 	inventory_image = "portal_entity_motion_debug_hammer.png",
 	on_use = function(item, user, pointed)
 		if pointed.type ~= "object" then return nil end
 		local target = pointed.ref
-		local lookdir = user:get_look_dir()
-		local vel = vector.multiply(lookdir, hammer_power)
-		fling_entity(target, vel)
-	end
+		hammer_throw(user, target)
+	end,
+	on_place = throwme,
+	on_secondary_use = throwme,
 })
 
 -- a debug item which lets admins detach themselves or other objects from any parent.
