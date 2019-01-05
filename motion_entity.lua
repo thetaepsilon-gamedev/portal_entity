@@ -37,7 +37,7 @@ end
 
 local ndebug = function() end
 local ydebug = print
-local debug = ydebug
+local debug = ndebug
 local kill = function(msg)
 	debug(msg)
 	return true
