@@ -35,9 +35,76 @@ end
 
 
 
+
+-- calls used during development, normally debug should = ndebug
 local ndebug = function() end
 local ydebug = print
 local debug = ndebug
+
+
+
+
+
+-- determine if a player is stood on a solid node at any corners of the hitbox.
+-- if so, they are allowed to become detached from the motion entity
+-- (see check_self_kill() below)
+local vec3 = vector.new
+local is_solid = function(node_def)
+	return node_def and node_def.walkable or false
+end
+local getnode = minetest.get_node
+local defs = minetest.registered_nodes
+local get = function(pos)
+	local n = getnode(pos)
+	return defs[n.name]
+end
+local is_standing = function(self, pos)
+	local px, pz = pos.x, pos.z
+	local feet = { y = pos.y - 0.05 }	-- x/z filled below
+	local n1, n2, n3, n4	-- nodes underneath each corner
+	local g1, g2, g3, g4	-- whether each corner has grip on something
+	local xmin = self.cxmin
+	local xmax = self.cxmax
+	local zmin = self.czmin
+	local zmax = self.czmax
+
+	-- corner -/-
+	feet.x = px + xmin
+	feet.z = pz + zmin
+	n1 = get(feet)
+	g1 = is_solid(n1)
+	--debug("grip g1: "..tostring(g1))
+
+	-- corner -/+
+	feet.x = px + xmin
+	feet.z = pz + zmax
+	n2 = get(feet)
+	g2 = is_solid(n2)
+	--debug("grip g2: "..tostring(g2))
+
+	-- corner +/-
+	feet.x = px + xmax
+	feet.z = pz + zmin
+	n3 = get(feet)
+	g3 = is_solid(n3)
+	--debug("grip g3: "..tostring(g3))
+
+	-- corner +/+
+	feet.x = px + xmax
+	feet.z = pz + zmax
+	n4 = get(feet)
+	g4 = is_solid(n4)
+	--debug("grip g4: "..tostring(g4))
+
+	local r = g1 or g2 or g3 or g4
+	--debug("grip result: "..tostring(r))
+	return r
+end
+
+
+
+
+
 local kill = function(msg)
 	debug(msg)
 	return true
@@ -45,7 +112,6 @@ end
 local ok = function()
 	debug("ok")
 end
-local vec3 = vector.new
 local check_self_kill = function(self)
 	if not self.setup then return kill("not initialised") end
 	-- we can't retrieve child objects in attached bones.
@@ -73,20 +139,10 @@ local check_self_kill = function(self)
 	-- TODO: what if this changes in future
 	local pos = self.object:get_pos()
 	if speed < 4 then
-		local feet = vec3(pos.x, pos.y-0.05, pos.z)
-		local node = minetest.get_node(feet)
-		-- in the event of anything failing, keep the entity attached.
-		if node then
-			local n = node.name
-			debug("name: ", n)
-			local def = minetest.registered_nodes[n]
-			-- we don't treat ignore as a blocking condition.
-			-- this way we're not detached if the world can't keep up
-			if def then
-				if def.walkable then
-					return kill("stood on solid node")
-				end
-			end
+		local grip = is_standing(self, pos)
+		--debug("grip: "..tostring(grip))
+		if grip then
+			return kill("stood on solid node")
 		end
 	end
 
@@ -110,6 +166,22 @@ end
 
 
 
+
+
+-- function used below to save cbox bounds for use elsewhere.
+-- in particular, x/z are used for the standing-on-node checks.
+local save_cbox_feet_bounds = function(self, cbox)
+	self.cxmin = cbox[1]
+	self.czmin = cbox[3]
+
+	self.cxmax = cbox[4]
+	self.czmax = cbox[6]
+end
+
+
+
+
+
 local zero = vector.new(0,0,0)
 -- is there a better way to do this...
 local gravity = vector.new(0, -9.8, 0)
@@ -123,6 +195,7 @@ local attach_player = function(self, player)
 	current.weight = pprops.weight
 	current.collisionbox = pprops.collisionbox
 	adjust_cbox_mut(current.collisionbox)
+	save_cbox_feet_bounds(self, current.collisionbox)
 	o:set_properties(current)
 	o:set_acceleration(gravity)
 
