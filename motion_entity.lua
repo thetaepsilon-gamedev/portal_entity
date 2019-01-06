@@ -317,6 +317,7 @@ i.fling_player = fling_player
 local fling_entity = function(ent, addvel)
 	-- seek for the root of the attachment hierachy
 	local current = ent
+	--debug("initial fling entity: "..tostring(current))
 	local iterate = function()
 		local parent, bone, pos = current:get_attach()
 		if parent then current = parent end
@@ -350,11 +351,29 @@ local throwme = function(item, user, pointed)
 	-- that way lies segfaults and sadness
 	hammer_throw(user, user)
 end
+
+local throw_node = function(pos, user)
+	-- yes, this is a bit of a hack... but I need the entity ref!
+	local ref = minetest.add_entity(pos, "__builtin:falling_node")
+	if ref then
+		-- finally, an entity with a sane method interface
+		local rpc = ref:get_luaentity()
+		rpc:set_node(minetest.get_node(pos), minetest.get_meta(pos):to_table())
+		minetest.remove_node(pos)
+		--debug("node throw ref: "..tostring(ref))
+		hammer_throw(user, ref)
+	end
+end
+
 minetest.register_craftitem(n, {
 	description = "Debug fling hammer (try punching an object/player)",
 	inventory_image = "portal_entity_motion_debug_hammer.png",
 	on_use = function(item, user, pointed)
-		if pointed.type ~= "object" then return nil end
+		if pointed.type ~= "object" then
+			if pointed.type ~= "node" then return nil end
+			throw_node(pointed.under, user)
+			return
+		end
 		local target = pointed.ref
 		hammer_throw(user, target)
 	end,
