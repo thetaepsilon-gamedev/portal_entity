@@ -154,13 +154,58 @@ local on_step = function(self, dtime)
 	if not self.enabled then return end
 	return find_intersecting_entities(self)
 end
+local saveprops = {
+	"minplanex",
+	"maxplanex",
+	"minplaney",
+	"maxplaney",
+	"axis_out",
+	"axis_north",
+	"axis_east",
+	"targetpos",
+	"enabled",
+}
+local flatten = minetest.serialize
+local mksave = function(props)
+	-- apparently "self" is userdata so one cannot pass it to serialize(),
+	-- otherwise minetest will have a fatal lua abort.
+	local save = {}
+	return function(self)
+		for i, k in ipairs(props) do
+			save[k] = self[k]
+		end
+		return flatten(save)
+	end
+end
+
+
 
 
 local n = "portal_entity:portal"
+local msg = n .. " failed to load due to corrupt staticdata, KO'ing self: "
+local restore_deserial = function(self, staticdata)
+	if staticdata == "" then return end
+	local data, err = minetest.deserialize(staticdata)
+	if not data then
+		minetest.log("warning", msg .. err)
+		self.object:remove()
+		return
+	end
+	for k, v in pairs(data) do
+		self[k] = v
+	end
+end
+
+
+
+
+
 minetest.register_entity(n, {
 	visual = "sprite",
 	textures = { "portal_entity_sprite.png" },
 	on_step = on_step,
+	get_staticdata = mksave(saveprops),
+	on_activate = restore_deserial,
 })
 
 -- export helpers interface
