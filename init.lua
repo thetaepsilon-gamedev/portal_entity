@@ -50,29 +50,32 @@ end
 
 
 
+local ydebug = print
+local ndebug = function() end
+local debug = ndebug
 local does_entity_intersect = function(self, ent, rotator, bx, by, bz)
-	print("--- portal@"..tostring(self.object)..": polled entity: "..tostring(ent))
+	--debug("--- portal@"..tostring(self.object)..": polled entity: "..tostring(ent))
 	local currentp_ws = ent:get_pos()
 	local offset_predicted = get_vel(ent)
 
 	-- translate to relative space but still world aligned
 	local cwx, cwy, cwz = unwrap(currentp_ws)
-	print("world space", cwx, cwy, cwz)
+	--debug("world space", cwx, cwy, cwz)
 	local crx, cry, crz = diff(cwx, cwy, cwz, bx, by, bz)
-	print("relative space currentpos", crx, cry, crz)
+	--debug("relative space currentpos", crx, cry, crz)
 	-- also relative space offset, no origin translation needed for offsets.
 	local orx, ory, orz = get_scaled_velocity(ent)
-	print("relative space velocity offset", orx, ory, orz)
+	--debug("relative space velocity offset", orx, ory, orz)
 	-- rotate current position and offset into portal space
 	local cpx, cpy, cpz = rotator(crx, cry, crz)
 	local opx, opy, opz = rotator(orx, ory, orz)
-	print("portal space currentpos", cpx, cpy, cpz)
-	print("portal space offset", opx, opy, opz)
+	--debug("portal space currentpos", cpx, cpy, cpz)
+	--debug("portal space offset", opx, opy, opz)
 
 
 	-- firstly, if the entity starts *behind* the portal, ignore it
 	if cpz < 0 then
-		print("! start point behind portal")
+		debug("! start point behind portal")
 		return false
 	end
 	-- predict next position in portal space using velocity offset.
@@ -81,7 +84,7 @@ local does_entity_intersect = function(self, ent, rotator, bx, by, bz)
 	if cpz + opz > 0 then
 		-- offset Z should be going down to cross the portal.
 		-- to cross it, it must go across the Z=0 boundary
-		print("! next position doesn't cross portal")
+		debug("! next position doesn't cross portal")
 		return false
 	end
 
@@ -94,11 +97,11 @@ local does_entity_intersect = function(self, ent, rotator, bx, by, bz)
 	local scaledy = opy * scale
 	local planex = cpx + scaledx
 	local planey = cpy + scaledy
-	print("scaled plane intersection point (X/Y)", planex, planey)
+	--debug("scaled plane intersection point (X/Y)", planex, planey)
 
 	local isinbounds = inbounds(self.minplanex, planex, self.maxplanex) and
 		inbounds(self.minplaney, planey, self.maxplaney)
-	print("isinbounds", isinbounds)
+	debug("! isinbounds", isinbounds)
 
 	-- TODO: returning entity velocity in portal space
 	return isinbounds
