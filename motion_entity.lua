@@ -184,7 +184,7 @@ end
 
 local zero = vector.new(0,0,0)
 -- is there a better way to do this...
-local gravity = vector.new(0, -9.8, 0)
+local gravity = vector.new(0, -20, 0)
 local attach_player = function(self, player)
 	self.player = player
 
