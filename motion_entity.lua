@@ -161,6 +161,17 @@ local check_self_kill = function(self)
 		if grip then
 			return kill("stood on solid node")
 		end
+
+		if speed < 1 then
+			-- allow the player to roam free if they're swimming.
+			local lname = getnode(pos).name
+			local ldef = minetest.registered_nodes[lname]
+			-- where's C#'s ?? operator when you need it
+			local lt = ldef and ldef.liquidtype or nil
+			if lt == "source" or lt == "flowing" then
+				return kill("swimming in liquid")
+			end
+		end
 	end
 
 	-- assuming we passed all that, we can continue.
