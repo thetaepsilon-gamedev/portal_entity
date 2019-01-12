@@ -257,6 +257,8 @@ end
 
 
 
+
+
 -- it's not the fall that kills you, it's the sudden stop at the end.
 -- hurt the player on sudden acceleration.
 -- the numbers below are approximately gathered from experiments in MT:
@@ -265,9 +267,35 @@ end
 -- assuming a perfect 0.1 second tick speed,
 -- this means the player can endure a 134m/s^2 deceleration before hurting.
 -- after that, damage increases roughly every 10m/s^2.
+local get_collide_multiplier = function(face)
+	local total = 0
+	local corner
+	for i = 1, 4, 1 do
+		corner = is_solid(face[i]) and 1 or 0
+		total = total + corner
+	end
+	return total / 4
+end
+local abs = math.abs
+local floor = math.floor
+
+-- more tweak constants...
+local sq_threshold = 13.4
+local sq_scaler = 0.2
+local sq_exp = 1.5
+local squish_axis = function(vdiff, face_min, face_max, debuglabel)
+	-- if we a negative delta, i.e. slowed down going +X,
+	-- we expect the offending nodes to be in the +X direction.
+	local face = (vdiff < 0) and face_max or face_min
+	local vabs = abs(vdiff)
+	local mult = get_collide_multiplier(face)
+	-- abs needed here, raising negatives to fractional exponent = not good
+	local dmg = ((abs(vabs - sq_threshold) * sq_scaler) ^ sq_exp) * mult
+	print(debuglabel, vdiff, vabs, mult, dmg)
+	return dmg
+end
 local sub = vector.subtract
 local len = vector.length
-local floor = math.floor
 local squish = function(self, selfobj, dtime, cvel, defs)
 	local old = self.oldvel
 	local new = cvel
@@ -278,9 +306,17 @@ local squish = function(self, selfobj, dtime, cvel, defs)
 	-- first step, no previous velocity... so skip.
 	if not old then return end
 
-	local acceleration = len(sub(new, old)) / dtime
-	local dmg = (acceleration - 124) / 100
-	local hp = floor(dmg)
+	local acc = sub(new, old)
+	-- for each axis, if there is a sudden change in velocity,
+	-- check if there has been a node encounted at the friction step.
+	-- if so, scale the damage by the number of "solid" nodes
+	-- (uses the same walkable logic for now).
+	-- TODO: make some nodes more harmful at speed? e.g. big spikes
+	local dmg_x = squish_axis(acc.x, defs.xmin, defs.xmax, "x")
+	local dmg_y = squish_axis(acc.y, defs.ymin, defs.ymax, "y")
+	local dmg_z = squish_axis(acc.z, defs.zmin, defs.zmax, "z")
+	local hp = floor(dmg_x + dmg_y + dmg_z)
+	print("total damage: "..hp)
 	if hp > 0 then
 		local oldhp = p:get_hp()
 		local newhp = oldhp - hp
@@ -288,6 +324,7 @@ local squish = function(self, selfobj, dtime, cvel, defs)
 		p:set_hp(newhp)
 	end
 end
+
 
 
 
