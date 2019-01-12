@@ -22,7 +22,24 @@ the entity detaches the player and removes itself.
 
 -- applying friction to the entity on solid surfaces
 local m_friction_calc = mtrequire("ds2.minetest.drag_physics.mt_default_friction_calc")
-local friction_sampler = m_friction_calc.friction_sampler
+-- get the extradata (node definitions) out as a table structure,
+-- useful below in squish() to detect if nodes have been collided with.
+local mkxface = function(face, xalbl, xahbl, xalbh, xahbh)
+	return { xalbl, xahbl, xalbh, xahbh }
+end
+local mkxcube = function(exmin, eymin, ezmin, exmax, eymax, ezmax)
+	return {
+		xmin = exmin,
+		xmax = exmax,
+		ymin = eymin,
+		ymax = eymax,
+		zmin = ezmin,
+		zmax = ezmax,
+	}
+end
+local friction_sampler =
+	m_friction_calc.mk_sampler_with_extradata(mkxface, mkxcube)
+
 m_apply = mtrequire("ds2.minetest.drag_physics.apply_surface_friction")
 local apply_surface_friction = m_apply.apply
 local apply = function(dtime, selfent)
@@ -236,16 +253,68 @@ local set_player = function(self, player)
 	-- otherwise we should be good
 end
 
+
+
+
+
+-- it's not the fall that kills you, it's the sudden stop at the end.
+-- hurt the player on sudden acceleration.
+-- the numbers below are approximately gathered from experiments in MT:
+-- the player starts to take fall damage from 6 blocks of fall;
+-- at the moment the player hits the ground they are moving at around 13.4m/s.
+-- assuming a perfect 0.1 second tick speed,
+-- this means the player can endure a 134m/s^2 deceleration before hurting.
+-- after that, damage increases roughly every 10m/s^2.
+local sub = vector.subtract
+local len = vector.length
+local floor = math.floor
+local squish = function(self, selfobj, dtime, cvel, defs)
+	local old = self.oldvel
+	local new = cvel
+	local p = self.playerref
+	if not p then return end	-- cleanup will catch this too
+	self.oldvel = new
+
+	-- first step, no previous velocity... so skip.
+	if not old then return end
+
+	local acceleration = len(sub(new, old)) / dtime
+	local dmg = (acceleration - 124) / 100
+	local hp = floor(dmg)
+	if hp > 0 then
+		local oldhp = p:get_hp()
+		local newhp = oldhp - hp
+		if newhp < 0 then newhp = 0 end
+		p:set_hp(newhp)
+	end
+end
+
+
+
+
+
+
 local on_step = function(self, dtime)
 	-- surface drag calculations
-	apply(dtime, self.object)
+	local cvel, fextra = apply(dtime, self.object)
+	--print(fextra.xmin[1].drawtype)
+
+	-- slow-down damage
+	squish(self, self.object, dtime, cvel, fextra)
+
 	-- check the player is still appropriate, else remove ourselves
 	local kill = check_self_kill(self)
 	if kill then
 		debug("object no longer suitable")
 		self:cleanup()
+		return
 	end
 end
+
+
+
+
+
 
 -- clean-up routine which detaches the player properly before removing the object.
 -- hopefully to counter some weird invisibility bugs for players
