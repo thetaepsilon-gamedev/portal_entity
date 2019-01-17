@@ -305,7 +305,6 @@ local squish_axis = function(vdiff, face_min, face_max, debuglabel)
 	local vabs = abs(vdiff)
 	local mult = get_collide_multiplier(face)
 	local dmg = ((threshold_sub(vabs, sq_threshold) * sq_scaler) ^ sq_exp) * mult
-	--print(debuglabel, vdiff, vabs, mult, dmg)
 	return dmg
 end
 local sub = vector.subtract
@@ -330,7 +329,6 @@ local squish = function(self, selfobj, dtime, cvel, defs)
 	local dmg_y = squish_axis(acc.y, defs.ymin, defs.ymax, "y")
 	local dmg_z = squish_axis(acc.z, defs.zmin, defs.zmax, "z")
 	local hp = floor(dmg_x + dmg_y + dmg_z)
-	--print("total damage: "..hp)
 	if hp > 0 then
 		local oldhp = p:get_hp()
 		local newhp = oldhp - hp
@@ -348,7 +346,6 @@ end
 local on_step = function(self, dtime)
 	-- surface drag calculations
 	local cvel, fextra = apply(dtime, self.object)
-	--print(fextra.xmin[1].drawtype)
 
 	-- slow-down damage
 	squish(self, self.object, dtime, cvel, fextra)
