@@ -294,14 +294,17 @@ local floor = math.floor
 local sq_threshold = 13.4
 local sq_scaler = 0.2
 local sq_exp = 1.5
+local threshold_sub = function(v, threshold)
+	local r = v - threshold
+	return (r <= 0) and 0 or r
+end
 local squish_axis = function(vdiff, face_min, face_max, debuglabel)
 	-- if we a negative delta, i.e. slowed down going +X,
 	-- we expect the offending nodes to be in the +X direction.
 	local face = (vdiff < 0) and face_max or face_min
 	local vabs = abs(vdiff)
 	local mult = get_collide_multiplier(face)
-	-- abs needed here, raising negatives to fractional exponent = not good
-	local dmg = ((abs(vabs - sq_threshold) * sq_scaler) ^ sq_exp) * mult
+	local dmg = ((threshold_sub(vabs, sq_threshold) * sq_scaler) ^ sq_exp) * mult
 	--print(debuglabel, vdiff, vabs, mult, dmg)
 	return dmg
 end
