@@ -307,6 +307,11 @@ local squish_axis = function(vdiff, face_min, face_max, debuglabel)
 	local dmg = ((threshold_sub(vabs, sq_threshold) * sq_scaler) ^ sq_exp) * mult
 	return dmg
 end
+
+
+
+
+
 local sub = vector.subtract
 local len = vector.length
 local squish = function(self, selfobj, dtime, cvel, defs)
@@ -333,7 +338,11 @@ local squish = function(self, selfobj, dtime, cvel, defs)
 		local oldhp = p:get_hp()
 		local newhp = oldhp - hp
 		if newhp < 0 then newhp = 0 end
-		p:set_hp(newhp)
+
+		-- NB: 5.0.0 had a bug causing this to murder the server.
+		-- 5.0.1 or higher is required.
+		local reason = {type="fall"}
+		p:set_hp(newhp, reason)
 	end
 end
 
@@ -516,6 +525,34 @@ minetest.register_craftitem(n, {
 	on_secondary_use = releaseme,
 	groups = { not_in_creative_inventory = 1 },
 })
+
+
+
+
+
+
+-- Test block to be used with player_onstep_hooks:
+-- an Aerial Faith Plate.
+-- The block requires X, Y, and Z floats set in it's metadata.
+-- When these are set, players walking on it are thrown using the above code,
+-- with the velocity vector formed out of the loaded XYZ components
+minetest.register_node("portal_entity:aerial_faith_plate", {
+	description = "Aerial faith plate (needs metadata set)",
+	groups = {oddly_breakable_by_hand=1},
+	on_stood_on = function(player, pos, node, def)
+		local meta = minetest.get_meta(pos)
+		-- :get_float() returns 0 anyway if not set...
+		local x = meta:get_float("x")
+		local y = meta:get_float("y")
+		local z = meta:get_float("z")
+		local velocity = vec3(x, y, z)
+
+		fling_entity(player, velocity)
+	end
+})
+
+
+
 
 
 
