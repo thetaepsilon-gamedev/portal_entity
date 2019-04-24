@@ -478,7 +478,21 @@ local throwme = function(item, user, pointed)
 	hammer_throw(user, user)
 end
 
+
+
+local forbidden_msg = "Node was marked protected, refusing to throw."
 local throw_node = function(pos, user)
+
+	-- protection consideration...
+	if user:is_player() then
+		local name = user:get_player_name()
+		if minetest.is_protected(pos, name) then
+			minetest.chat_send_player(name, forbidden_msg)
+			minetest.record_protection_violation(pos, name)
+			return
+		end
+	end
+
 	-- yes, this is a bit of a hack... but I need the entity ref!
 	local ref = minetest.add_entity(pos, "__builtin:falling_node")
 	if ref then
